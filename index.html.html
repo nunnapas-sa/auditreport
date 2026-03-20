@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financial PDF Extractor</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+:root{
+  --bg:#f0f4f8;--surface:#fff;--s2:#f8fafc;--border:#e2e8f0;
+  --accent:#3b6fd4;--al:#ebf0fb;--ah:#2d5bbf;
+  --text:#1e293b;--t2:#64748b;--t3:#94a3b8;
+  --err:#dc2626;--errl:#fef2f2;--warn:#d97706;--warnl:#fffbeb;
+  --ok:#16a34a;--okl:#f0fdf4;
+  --num:#1e40af;--neg:#991b1b;--totbg:#eff6ff;--secbg:#f1f5f9;
+  --r:10px;--sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Sarabun',sans-serif;min-height:100vh;padding:24px 16px 60px;font-size:15px}
+header{max-width:900px;margin:0 auto 20px;display:flex;align-items:center;gap:12px}
+.hico{width:40px;height:40px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:var(--sh)}
+header h1{font-size:19px;font-weight:700}
+header p{font-size:13px;color:var(--t2);margin-top:2px}
+.wrap{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh)}
+.ch{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.ch .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.ch h2{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.6px}
+.ch .badge{margin-left:auto;font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;background:var(--al);color:var(--accent)}
+.ch .badge.ok{background:var(--okl);color:var(--ok)}
+.ch .badge.loading{background:var(--warnl);color:var(--warn)}
+.cb{padding:16px}
+
+/* Upload */
+.upzone{border:2px dashed var(--border);border-radius:var(--r);padding:30px 20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s2)}
+.upzone:hover,.upzone.over{border-color:var(--accent);background:var(--al)}
+.upzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.upzone .ico{font-size:32px;margin-bottom:8px}
+.upzone .t1{font-size:15px;font-weight:600;margin-bottom:3px}
+.upzone .t2{font-size:13px;color:var(--t2)}
+.fchip{display:none;align-items:center;gap:10px;background:var(--al);border:1.5px solid var(--accent);border-radius:8px;padding:10px 14px;font-size:14px}
+.fchip .fn{font-weight:600;color:var(--accent);flex:1;word-break:break-all}
+.fchip .fs{font-size:12px;color:var(--t2);font-family:monospace;flex-shrink:0}
+.fchip button{background:none;border:none;color:var(--t2);cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0}
+.fchip button:hover{color:var(--err)}
+
+/* Options */
+.ogrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:500px){.ogrid{grid-template-columns:1fr}}
+.og label{font-size:11px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:7px}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pill{background:var(--s2);border:1.5px solid var(--border);border-radius:20px;padding:5px 12px;font-size:13px;cursor:pointer;transition:all .15s;color:var(--t2);font-family:'Sarabun',sans-serif;font-weight:500}
+.pill.on{background:var(--al);border-color:var(--accent);color:var(--accent);font-weight:700}
+.pill:hover:not(.on){border-color:#94a3b8;color:var(--text)}
+
+/* Button */
+.btn-go{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;transition:background .15s,opacity .15s;box-shadow:0 2px 6px rgba(59,111,212,.3)}
+.btn-go:hover:not(:disabled){background:var(--ah)}
+.btn-go:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.btn-sm{padding:6px 12px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;transition:all .15s;border:1.5px solid var(--border);background:var(--surface);color:var(--t2);display:inline-flex;align-items:center;gap:4px}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent);background:var(--al)}
+.btn-sm.pri{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-sm.pri:hover{background:var(--ah)}
+
+/* Progress */
+.prow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.prow .plabel{font-size:13px;color:var(--t2);flex:1}
+.prow .pstatus{font-size:12px;font-weight:600;color:var(--t3)}
+.prow .pstatus.done{color:var(--ok)}
+.prow .pstatus.fail{color:var(--err)}
+.pbg{height:4px;background:var(--border);border-radius:4px;overflow:hidden;margin-bottom:12px}
+.pb{height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width .4s ease}
+.pb.done{background:var(--ok)}
+.pb.fail{background:var(--err)}
+.spinner{width:13px;height:13px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Error/note */
+.errbox{display:none;background:var(--errl);border:1px solid #fecaca;border-left:4px solid var(--err);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--err)}
+.notebox{background:var(--warnl);border-left:4px solid var(--warn);padding:8px 12px;font-size:12px;color:#92400e;border-radius:0 6px 6px 0;margin-top:10px}
+
+/* ===== RESULTS ===== */
+/* Main statement tabs */
+.tab-bar{display:flex;overflow-x:auto;border-bottom:2px solid var(--border);padding:0 16px;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tbtn{padding:10px 14px;font-size:13px;font-weight:500;cursor:pointer;background:none;border:none;color:var(--t2);font-family:'Sarabun',sans-serif;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.tbtn.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+.tbtn:hover:not(.on){color:var(--text);background:var(--s2)}
+.res-actions{display:flex;gap:6px;flex-wrap:wrap;padding:10px 16px;border-top:1px solid var(--border)}
+
+/* Table */
+.tblwrap{overflow-x:auto;max-height:460px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{background:var(--secbg);padding:9px 14px;text-align:left;font-weight:700;font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;position:sticky;top:0;z-index:1;border-bottom:2px solid var(--border)}
+th:not(:first-child){text-align:right}
+td{padding:8px 14px;border-bottom:1px solid var(--border);color:var(--text)}
+td:not(:first-child){text-align:right;font-family:monospace;font-size:13px}
+td.num{color:var(--num)} td.neg{color:var(--neg)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbff}
+tr.sec td{background:var(--secbg);font-weight:700;font-size:12px;color:var(--t2);padding:6px 14px}
+tr.tot td{background:var(--totbg);font-weight:700;border-top:1px solid #bfdbfe;border-bottom:1px solid #bfdbfe}
+tr.tot td.num{color:var(--accent)} tr.tot td.neg{color:var(--neg)}
+
+/* ===== NOTES SECTION ===== */
+.notes-section{display:none}
+.notes-list{display:flex;flex-direction:column;gap:8px;padding:12px}
+.note-item{border:1px solid var(--border);border-radius:8px;overflow:hidden;transition:box-shadow .15s}
+.note-item:hover{box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.note-header{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;background:var(--s2);user-select:none;transition:background .15s}
+.note-header:hover{background:var(--al)}
+.note-header.open{background:var(--al);border-bottom:1px solid var(--border)}
+.note-title{font-size:13px;font-weight:600;color:var(--text);flex:1}
+.note-chevron{font-size:12px;color:var(--t3);transition:transform .2s;flex-shrink:0}
+.note-chevron.open{transform:rotate(180deg)}
+.note-loading{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:12px;color:var(--t2)}
+.note-body{display:none;background:var(--surface)}
+.note-body.open{display:block}
+.note-body .tblwrap{max-height:320px}
+.note-body .res-actions{padding:8px 12px;border-top:1px solid var(--border);background:var(--s2)}
+.note-skeleton{padding:14px;display:flex;flex-direction:column;gap:8px}
+.skel{background:linear-gradient(90deg,#e2e8f0 25%,#f1f5f9 50%,#e2e8f0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:4px;height:12px}
+.skel.w60{width:60%}.skel.w80{width:80%}.skel.w40{width:40%}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.notes-loading-bar{display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13px;color:var(--t2);border-bottom:1px solid var(--border)}
+.notes-done-label{font-size:12px;font-weight:600;color:var(--ok);margin-left:auto}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--text);color:#fff;padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;opacity:0;transform:translateY(6px);transition:all .2s;pointer-events:none;z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.toast.show{opacity:1;transform:translateY(0)}
+.pg-input{width:80px;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:14px;font-family:'Sarabun',sans-serif;background:var(--s2);color:var(--text);outline:none;transition:border-color .15s;-moz-appearance:textfield}
+.pg-input:focus{border-color:var(--accent);background:#fff}
+.pg-input::placeholder{color:var(--t3)}
+.pg-input::-webkit-inner-spin-button,.pg-input::-webkit-outer-spin-button{-webkit-appearance:none}
+.pg-hint{font-size:11px;color:var(--t2);margin-top:5px}
+.api-row{display:flex;gap:8px;align-items:center}
+.api-inp{flex:1;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:monospace;background:var(--s2);color:var(--text);outline:none;transition:border-color .15s}
+.api-inp:focus{border-color:var(--accent);background:#fff}
+.api-inp::placeholder{color:var(--t3);font-family:'Sarabun',sans-serif}
+.eye-btn{padding:10px 12px;background:var(--s2);border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:15px;color:var(--t2);transition:all .15s;flex-shrink:0}
+.eye-btn:hover{border-color:var(--accent);color:var(--accent)}
+.api-hint{font-size:12px;color:var(--t2);margin-top:7px;line-height:1.6}
+.api-hint a{color:var(--accent);text-decoration:none}
+.api-hint a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<header>
+  <div class="hico">📊</div>
+  <div>
+    <h1>Financial PDF Extractor</h1>
+    <p>PDF งบการเงินจากออดิท → งบหลัก + หมายเหตุ → Copy / Excel</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- API Key -->
+  <div class="card" id="apiCard">
+    <div class="ch"><div class="dot"></div><h2>Anthropic API Key</h2></div>
+    <div class="cb">
+      <div class="api-row">
+        <input class="api-inp" type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off" oninput="checkApiKey()">
+        <button class="eye-btn" id="eyeBtn" onclick="toggleEye()" title="แสดง/ซ่อน">👁</button>
+      </div>
+      <div class="api-hint">
+        ต้องใช้ API Key เพื่อให้ Claude อ่าน PDF —
+        <a href="https://console.anthropic.com/settings/keys" target="_blank">ขอ Key ได้ที่ console.anthropic.com</a><br>
+        Key จะไม่ถูกบันทึก ใช้เฉพาะในเซสชันนี้เท่านั้น · ค่าใช้จ่ายประมาณ $0.01–0.05 ต่อไฟล์
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="ch"><div class="dot"></div><h2>ไฟล์ PDF งบการเงิน</h2></div>
+    <div class="cb" style="display:flex;flex-direction:column;gap:10px">
+      <div class="upzone" id="upzone">
+        <input type="file" accept=".pdf" id="fileInput">
+        <div class="ico">📄</div>
+        <div class="t1">วางไฟล์ PDF ที่นี่ หรือคลิกเพื่อเลือก</div>
+        <div class="t2">รองรับ: งบกำไรขาดทุน · งบดุล · งบกระแสเงินสด · หมายเหตุประกอบงบ</div>
+      </div>
+      <div class="fchip" id="fchip">
+        <span style="font-size:18px;flex-shrink:0">📄</span>
+        <span class="fn" id="fname"></span>
+        <span class="fs" id="fsize"></span>
+        <button onclick="clearFile()">✕</button>
+      </div>
+      <div class="errbox" id="upErr"></div>
+    </div>
+  </div>
+
+  <!-- Options -->
+  <div class="card" id="optsCard" style="display:none">
+    <div class="ch"><div class="dot"></div><h2>ตัวเลือก</h2></div>
+    <div class="cb">
+      <div class="ogrid">
+        <div class="og">
+          <label>หน่วยตัวเลข</label>
+          <div class="pills" id="unitOpts">
+            <div class="pill on" data-val="auto">ตามเอกสาร</div>
+            <div class="pill" data-val="thb">บาท</div>
+            <div class="pill" data-val="k">พัน (K)</div>
+            <div class="pill" data-val="m">ล้าน (M)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Page ranges -->
+  <div class="card" id="pgCard" style="display:none">
+    <div class="ch"><div class="dot"></div><h2>ระบุหน้า (ทำให้เร็วขึ้น)</h2><span class="badge" style="margin-left:auto;background:#f1f5f9;color:var(--t2)">ไม่บังคับ</span></div>
+    <div class="cb">
+      <div class="ogrid">
+        <div class="og">
+          <label>งบหลัก — หน้าที่</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="pg-input" type="number" id="mainFrom" placeholder="เช่น 5" min="1">
+            <span style="color:var(--t2);font-size:13px">ถึง</span>
+            <input class="pg-input" type="number" id="mainTo" placeholder="เช่น 15" min="1">
+          </div>
+          <div class="pg-hint">หน้างบกำไรขาดทุน / ดุล / กระแสเงินสด</div>
+        </div>
+        <div class="og">
+          <label>หมายเหตุ — หน้าที่</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="pg-input" type="number" id="noteFrom" placeholder="เช่น 16" min="1">
+            <span style="color:var(--t2);font-size:13px">ถึง</span>
+            <input class="pg-input" type="number" id="noteTo" placeholder="เช่น 60" min="1">
+          </div>
+          <div class="pg-hint">หน้าหมายเหตุประกอบงบการเงิน</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--t2);margin-top:10px;padding:8px 10px;background:var(--al);border-radius:6px;line-height:1.6">
+        💡 ถ้าระบุหน้าจะตัด PDF ก่อนส่ง — ลดเวลารอได้ ~40-60% สำหรับงบที่มีหมายเหตุเยอะ<br>ดูเลขหน้าได้จาก PDF viewer ก่อนอัปโหลด (หน้าแรกของเอกสาร = หน้า 1)
+      </div>
+    </div>
+  </div>
+
+  <div class="errbox" id="errBox"></div>
+  <button class="btn-go" id="btnGo" disabled onclick="runAll()">🔍 ดึงตัวเลขจาก PDF</button>
+
+  <!-- Progress card -->
+  <div class="card" id="progCard" style="display:none">
+    <div class="cb">
+      <div class="prow">
+        <div class="spinner" id="sp1"></div>
+        <span class="plabel" id="lbl1">ดึงงบหลัก (กำไรขาดทุน · ดุล · กระแสเงินสด)</span>
+        <span class="pstatus" id="st1">กำลังดำเนินการ...</span>
+      </div>
+      <div class="pbg"><div class="pb" id="pb1"></div></div>
+      <div class="prow">
+        <div class="spinner" id="sp2" style="opacity:.3"></div>
+        <span class="plabel" id="lbl2">ดึงหมายเหตุประกอบงบ</span>
+        <span class="pstatus" id="st2" style="color:var(--t3)">รอ...</span>
+      </div>
+      <div class="pbg"><div class="pb" id="pb2"></div></div>
+    </div>
+  </div>
+
+  <!-- MAIN STATEMENTS -->
+  <div class="card" id="mainCard" style="display:none">
+    <div class="ch">
+      <div class="dot"></div>
+      <h2>งบการเงินหลัก</h2>
+      <span class="badge ok" id="mainBadge"></span>
+    </div>
+    <div class="tab-bar" id="mainTabs"></div>
+    <div class="tblwrap"><div id="mainTbl"></div></div>
+    <div class="res-actions" id="mainActions">
+      <button class="btn-sm" onclick="copyTbl('main')">📋 Copy ตาราง</button>
+      <button class="btn-sm" onclick="dlCSV('main')">⬇ CSV</button>
+      <button class="btn-sm pri" onclick="dlXLSX('main')">⬇ Excel (ทุกงบ รวม 1 ไฟล์)</button>
+    </div>
+  </div>
+
+  <!-- NOTES -->
+  <div class="card notes-section" id="notesCard">
+    <div class="ch">
+      <div class="dot"></div>
+      <h2>หมายเหตุประกอบงบการเงิน</h2>
+      <span class="badge loading" id="notesBadge">กำลังโหลด...</span>
+      <button class="btn-sm" onclick="dlXLSX('notes')" id="btnDlNotes" style="display:none;margin-left:auto">⬇ Excel (ทุกหมายเหตุ)</button>
+    </div>
+    <div class="notes-loading-bar" id="notesLoadBar">
+      <div class="spinner"></div>
+      <span id="notesLoadTxt">กำลังดึงหมายเหตุในพื้นหลัง...</span>
+      <span class="notes-done-label" id="notesDoneLabel" style="display:none">✓ โหลดครบแล้ว</span>
+    </div>
+    <div class="notes-list" id="notesList"></div>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let file=null, unit='auto';
+let mainSheets=[], noteSheets=[], activeMainIdx=0;
+
+// Pills
+document.querySelectorAll('#unitOpts .pill').forEach(p=>p.addEventListener('click',()=>{
+  document.querySelectorAll('#unitOpts .pill').forEach(x=>x.classList.remove('on'));
+  p.classList.add('on'); unit=p.dataset.val;
+}));
+
+function checkApiKey(){ checkReady(); }
+function checkReady(){
+  const hasKey = document.getElementById('apiKey').value.trim().length > 10;
+  const hasFile = !!file;
+  document.getElementById('btnGo').disabled = !(hasKey && hasFile);
+}
+function toggleEye(){
+  const inp=document.getElementById('apiKey'),btn=document.getElementById('eyeBtn');
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁';}
+}
+
+// Drag/drop
+const zone=document.getElementById('upzone');
+zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('over')});
+zone.addEventListener('dragleave',()=>zone.classList.remove('over'));
+zone.addEventListener('drop',e=>{
+  e.preventDefault();zone.classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(!f){showUpErr('ไม่พบไฟล์');return}
+  if(!f.name.toLowerCase().endsWith('.pdf')&&f.type!=='application/pdf'){showUpErr(`"${f.name}" ไม่ใช่ PDF`);return}
+  setFile(f);
+});
+document.getElementById('fileInput').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f) return;
+  if(!f.name.toLowerCase().endsWith('.pdf')&&f.type!=='application/pdf'){showUpErr(`"${f.name}" ไม่ใช่ PDF`);e.target.value='';return}
+  setFile(f);
+});
+function showUpErr(m){
+  const b=document.getElementById('upErr');b.textContent='⚠️ '+m;b.style.display='block';
+  zone.style.borderColor='var(--err)';setTimeout(()=>zone.style.borderColor='',1800);
+}
+function setFile(f){
+  file=f;
+  document.getElementById('upErr').style.display='none';
+  document.getElementById('errBox').style.display='none';
+  document.getElementById('fname').textContent=f.name;
+  document.getElementById('fsize').textContent=(f.size/1024).toFixed(1)+' KB';
+  document.getElementById('fchip').style.display='flex';
+  document.getElementById('optsCard').style.display='block';
+  document.getElementById('pgCard').style.display='block';
+  checkReady();
+  document.getElementById('mainCard').style.display='none';
+  document.getElementById('notesCard').style.display='none';
+}
+function clearFile(){
+  file=null;document.getElementById('fileInput').value='';
+  ['fchip','optsCard','pgCard','mainCard','notesCard'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('btnGo').disabled=true; // cleared
+  document.getElementById('errBox').style.display='none';
+}
+
+// ===== JSON helpers =====
+function safeJSON(raw){
+  let s=raw.trim().replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  const st=s.indexOf('{'); if(st<0) return null; s=s.slice(st);
+  s=s.replace(/[\u201c\u201d\u201e\u201f\u2033\u2036]/g,'"').replace(/[\u2018\u2019\u201a\u201b\u2032\u2035]/g,"'");
+  try{return JSON.parse(s)}catch{}
+  // try balanced extraction
+  let d=0,inS=false,esc=false,end=0;
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(esc){esc=false;continue} if(c==='\\'){esc=true;continue}
+    if(c==='"'&&!esc){inS=!inS;continue}
+    if(!inS){if(c==='{')d++;else if(c==='}'){d--;if(d===0){end=i;break}}}
+  }
+  if(end>0){try{return JSON.parse(s.slice(0,end+1))}catch{}}
+  // repair
+  try{return JSON.parse(repairJSON(s))}catch{return null}
+}
+function repairJSON(s){
+  const lg=Math.max(s.lastIndexOf('},'),s.lastIndexOf('],'),s.lastIndexOf('"}'),s.lastIndexOf('"]'));
+  if(lg>0) s=s.slice(0,lg+1);
+  let br=0,bk=0,inS=false,esc=false;
+  for(let i=0;i<s.length;i++){
+    const c=s[i];
+    if(esc){esc=false;continue} if(c==='\\'){esc=true;continue}
+    if(c==='"'){inS=!inS;continue}
+    if(!inS){if(c==='{')br++;else if(c==='}')br--;if(c==='[')bk++;else if(c===']')bk--;}
+  }
+  while(bk>0){s+=']';bk--} while(br>0){s+='}';br--}
+  return s;
+}
+
+// ===== API call =====
+async function callClaude(b64, prompt){
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if(!apiKey) throw new Error('ไม่พบ API Key — กรุณาใส่ก่อน');
+  const r=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-20250514',
+      max_tokens:8000,
+      messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:prompt}
+      ]}]
+    })
+  });
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  return d.content.map(c=>c.text||'').join('');
+}
+
+// ===== Progress helpers =====
+function setPb(n,pct,cls){
+  const pb=document.getElementById('pb'+n);
+  pb.style.width=pct+'%';
+  if(cls){pb.className='pb '+cls}
+}
+function setSt(n,txt,cls){
+  const el=document.getElementById('st'+n);
+  el.textContent=txt; el.className='pstatus'+(cls?' '+cls:'');
+  const sp=document.getElementById('sp'+n);
+  if(cls==='done'){sp.style.display='none'}
+  else if(cls==='fail'){sp.style.display='none'}
+  else{sp.style.opacity='1'}
+}
+
+// ===== MAIN RUN =====
+async function runAll(){
+  if(!file) return;
+  const btn=document.getElementById('btnGo'); btn.disabled=true;
+
+  // Reset
+  document.getElementById('errBox').style.display='none';
+  document.getElementById('mainCard').style.display='none';
+  document.getElementById('notesCard').style.display='none';
+  document.getElementById('progCard').style.display='block';
+  setSt(1,'กำลังดำเนินการ...');setSt(2,'รอ...');
+  setPb(1,0,'');setPb(2,0,'');
+  document.getElementById('sp2').style.opacity='.3';
+
+  // Read full PDF as base64
+  let b64full;
+  try{
+    b64full = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file)});
+  }catch(e){showErr('อ่านไฟล์ไม่ได้: '+e.message);btn.disabled=false;return}
+
+  const mainFrom=parseInt(document.getElementById('mainFrom').value)||null;
+  const mainTo=parseInt(document.getElementById('mainTo').value)||null;
+  const noteFrom=parseInt(document.getElementById('noteFrom').value)||null;
+  const noteTo=parseInt(document.getElementById('noteTo').value)||null;
+  const hasMainRange = mainFrom&&mainTo;
+  const hasNoteRange = noteFrom&&noteTo;
+
+  const unitHint=unit==='auto'?'':`แสดงตัวเลขในหน่วย ${unit}`;
+
+  // ===== CALL 1: Main statements only (fast) =====
+  const p1=`คุณคือผู้เชี่ยวชาญอ่านงบการเงิน ${unitHint}
+ดึงเฉพาะตารางงบการเงินหลัก 4 ประเภทเท่านั้น:
+1. งบกำไรขาดทุน (Statement of Comprehensive Income)
+2. งบแสดงฐานะการเงิน / งบดุล (Balance Sheet)
+3. งบกระแสเงินสด (Cash Flow Statement)
+4. งบแสดงการเปลี่ยนแปลงส่วนของผู้ถือหุ้น
+
+ไม่ต้องดึง: คำนำ / สาส์นผู้บริหาร / รายงานผู้สอบบัญชี / หมายเหตุประกอบงบ / นโยบายบัญชี
+
+ตอบกลับ JSON เท่านั้น ไม่มี markdown:
+{"sheets":[{"name":"งบกำไรขาดทุน","unit":"พันบาท","period":"31 ธ.ค. 2567","headers":["รายการ","2567","2566"],"rows":[{"label":"รายได้จากการขาย","values":["12,500","11,200"],"type":"normal"},{"label":"รวมรายได้","values":["12,500","11,200"],"type":"total"},{"label":"สินทรัพย์หมุนเวียน","values":[],"type":"section"}]}],"period":"31 ธ.ค. 2567","unit":"พันบาท"}
+type: normal=ทั่วไป | total=ยอดรวม/กำไร/สุทธิ | section=หัวข้อย่อยไม่มีตัวเลข
+ดึงปีเปรียบเทียบด้วยถ้ามี`;
+
+  setPb(1,20,'');
+  let raw1;
+  try{
+    const pageHint1 = hasMainRange ? `\nโฟกัสเฉพาะหน้า ${mainFrom}-${mainTo} เท่านั้น` : '';
+    raw1=await callClaude(b64full, p1+pageHint1);
+    setPb(1,90,'');
+  }catch(e){
+    setSt(1,'ผิดพลาด','fail');setPb(1,100,'fail');
+    showErr('ดึงงบหลักไม่ได้: '+e.message);btn.disabled=false;return;
+  }
+
+  const parsed1=safeJSON(raw1);
+  if(!parsed1||!parsed1.sheets?.length){
+    setSt(1,'ไม่พบข้อมูล','fail');setPb(1,100,'fail');
+    showErr('ไม่พบตารางงบหลักในไฟล์นี้');btn.disabled=false;return;
+  }
+  mainSheets=parsed1.sheets;
+  setSt(1,`✓ พบ ${mainSheets.length} งบ`,'done');setPb(1,100,'done');
+  renderMain();
+  btn.disabled=false;
+
+  // ===== CALL 2: Notes — chunked parallel calls =====
+  document.getElementById('notesCard').style.display='block';
+  document.getElementById('sp2').style.opacity='1';
+  setSt(2,'กำลังดึงหมายเหตุ...');setPb(2,5,'');
+
+  const CHUNK = 20; // pages per chunk
+  // Build page chunks
+  let chunks = [];
+  if(hasNoteRange && noteFrom && noteTo){
+    for(let f=noteFrom; f<=noteTo; f+=CHUNK){
+      chunks.push({from:f, to:Math.min(f+CHUNK-1, noteTo)});
+    }
+  } else {
+    chunks = [{from:null, to:null}]; // no range = single full-PDF call
+  }
+
+  document.getElementById('notesLoadTxt').textContent =
+    chunks.length > 1
+      ? `กำลังดึงหมายเหตุแบบ parallel ${chunks.length} ชุด (ทีละ ~${CHUNK} หน้า)...`
+      : 'กำลังดึงหมายเหตุในพื้นหลัง...';
+
+  const makeNotesPrompt = (from, to) => {
+    const pageHint = (from&&to) ? `\nโฟกัสเฉพาะหน้า ${from}-${to} เท่านั้น อย่าอ่านหน้าอื่น` : '';
+    return `คุณคือผู้เชี่ยวชาญอ่านงบการเงิน${pageHint}
+ดึงเฉพาะหมายเหตุประกอบงบการเงิน (Notes to Financial Statements) ทุกข้อที่มีตัวเลข${pageHint ? ' ในช่วงหน้าที่กำหนด' : ''}
+ไม่ต้องดึง: งบหลัก / คำนำ / รายงานผู้สอบบัญชี / นโยบายบัญชีที่ไม่มีตัวเลข
+
+ตอบกลับ JSON เท่านั้น ไม่มี markdown:
+{"sheets":[{"name":"หมายเหตุ 5 - ลูกหนี้การค้า","unit":"พันบาท","period":"31 ธ.ค. 2567","headers":["รายการ","2567","2566"],"rows":[{"label":"ลูกหนี้การค้า","values":["1,200","980"],"type":"normal"},{"label":"สุทธิ","values":["4,480","3,785"],"type":"total"}]}]}
+type: normal=ทั่วไป | total=ยอดรวม/สุทธิ | section=หัวข้อย่อยไม่มีตัวเลข
+หมายเหตุแต่ละข้อ=sheet แยก "หมายเหตุ X - ชื่อ" | ข้อที่ไม่มีตัวเลขข้ามไป | ดึงปีเปรียบเทียบด้วย`;
+  };
+
+  try{
+    // Fire all chunk calls in parallel
+    const chunkPromises = chunks.map(ch => callClaude(b64full, makeNotesPrompt(ch.from, ch.to)));
+    const chunkProgress = new Array(chunks.length).fill(0);
+    // Poll-style progress
+    const progInterval = setInterval(()=>{
+      const done = chunkProgress.filter(v=>v===100).length;
+      const pct = 5 + Math.round((done/chunks.length)*90);
+      setPb(2, pct, '');
+      if(document.getElementById('st2').textContent.startsWith('กำลัง'))
+        setSt(2, chunks.length>1 ? `กำลังดึง... (${done}/${chunks.length} ชุด)` : 'กำลังดึงหมายเหตุ...');
+    }, 800);
+
+    const raws = await Promise.all(chunkPromises.map((p,i)=>p.then(r=>{chunkProgress[i]=100;return r}).catch(e=>{chunkProgress[i]=100;return null})));
+    clearInterval(progInterval);
+
+    // Merge all sheets, deduplicate by name
+    let allSheets = [];
+    const seen = new Set();
+    for(const raw of raws){
+      if(!raw) continue;
+      const parsed = safeJSON(raw);
+      if(!parsed?.sheets?.length) continue;
+      for(const s of parsed.sheets){
+        const key = s.name?.trim()||'';
+        if(!seen.has(key)){seen.add(key); allSheets.push(s);}
+      }
+    }
+
+    // Sort by note number (หมายเหตุ 1, 2, 3...)
+    allSheets.sort((a,b)=>{
+      const na = parseInt((a.name||'').match(/\d+/)?.[0])||999;
+      const nb = parseInt((b.name||'').match(/\d+/)?.[0])||999;
+      return na-nb;
+    });
+
+    setPb(2,100,'done');
+    if(allSheets.length){
+      noteSheets = allSheets;
+      setSt(2,`✓ พบ ${noteSheets.length} หมายเหตุ`,'done');
+      renderNotes();
+    }else{
+      setSt(2,'ไม่พบหมายเหตุ','done');
+      renderNotes([]);
+    }
+  }catch(e){
+    setPb(2,100,'fail');setSt(2,'ผิดพลาด','fail');
+    document.getElementById('notesLoadTxt').textContent='ดึงหมายเหตุไม่ได้: '+e.message;
+    document.getElementById('notesLoadBar').querySelector('.spinner').style.display='none';
+  }
+}
+
+function showErr(m){
+  document.getElementById('progCard').style.display='none';
+  const b=document.getElementById('errBox');b.textContent='❌ '+m;b.style.display='block';
+}
+
+// ===== RENDER MAIN =====
+function renderMain(){
+  document.getElementById('mainCard').style.display='block';
+  document.getElementById('mainBadge').textContent=mainSheets.length+' งบ';
+  document.getElementById('mainTabs').innerHTML='';
+  activeMainIdx=0;
+  mainSheets.forEach((s,i)=>{
+    const b=document.createElement('button');
+    b.className='tbtn'+(i===0?' on':'');
+    b.textContent=s.name||`งบ ${i+1}`;
+    b.onclick=()=>{
+      activeMainIdx=i;
+      document.querySelectorAll('#mainTabs .tbtn').forEach((x,j)=>x.classList.toggle('on',j===i));
+      renderTable('mainTbl',mainSheets[i]);
+    };
+    document.getElementById('mainTabs').appendChild(b);
+  });
+  renderTable('mainTbl',mainSheets[0]);
+}
+
+// ===== RENDER NOTES =====
+function renderNotes(){
+  const lb=document.getElementById('notesLoadBar');
+  lb.querySelector('.spinner').style.display='none';
+  document.getElementById('notesDoneLabel').style.display='inline';
+  document.getElementById('notesBadge').textContent=noteSheets.length+' หมายเหตุ';
+  document.getElementById('notesBadge').className='badge ok';
+  if(noteSheets.length) document.getElementById('btnDlNotes').style.display='inline-flex';
+
+  const list=document.getElementById('notesList');
+  list.innerHTML='';
+  if(!noteSheets.length){
+    list.innerHTML='<div style="padding:16px;font-size:13px;color:var(--t2)">ไม่พบหมายเหตุที่มีตัวเลขในไฟล์นี้</div>';
+    return;
+  }
+  noteSheets.forEach((s,i)=>{
+    const item=document.createElement('div'); item.className='note-item';
+    const hdr=document.createElement('div'); hdr.className='note-header';
+    hdr.innerHTML=`<span class="note-title">${s.name||'หมายเหตุ '+(i+1)}</span><span class="note-chevron" id="chev${i}">▼</span>`;
+    const body=document.createElement('div'); body.className='note-body'; body.id='nbody'+i;
+    const tblDiv=document.createElement('div'); tblDiv.className='tblwrap';
+    const actDiv=document.createElement('div'); actDiv.className='res-actions';
+    actDiv.innerHTML=`<button class="btn-sm" onclick="copyTbl('note',${i})">📋 Copy</button><button class="btn-sm" onclick="dlCSV('note',${i})">⬇ CSV</button><button class="btn-sm pri" onclick="dlXLSX('note',${i})">⬇ Excel</button>`;
+    body.appendChild(tblDiv); body.appendChild(actDiv);
+    item.appendChild(hdr); item.appendChild(body);
+    list.appendChild(item);
+
+    hdr.onclick=()=>{
+      const isOpen=body.classList.contains('open');
+      if(!isOpen){
+        renderTable(tblDiv,s);
+        body.classList.add('open');
+        hdr.classList.add('open');
+        document.getElementById('chev'+i).classList.add('open');
+      }else{
+        body.classList.remove('open');
+        hdr.classList.remove('open');
+        document.getElementById('chev'+i).classList.remove('open');
+      }
+    };
+  });
+}
+
+// ===== RENDER TABLE =====
+function renderTable(container,sheet){
+  const el=typeof container==='string'?document.getElementById(container):container;
+  const h=sheet.headers||[], r=sheet.rows||[];
+  let html='<table><thead><tr>'+h.map(x=>`<th>${x}</th>`).join('')+'</tr></thead><tbody>';
+  r.forEach(row=>{
+    if(row.type==='section'){html+=`<tr class="sec"><td colspan="${h.length}">${row.label}</td></tr>`;return}
+    html+=`<tr class="${row.type==='total'?'tot':''}"><td>${row.label}</td>`;
+    (row.values||[]).forEach(v=>{const neg=String(v||'').includes('(')||String(v||'').startsWith('-');html+=`<td class="${neg?'neg':'num'}">${v}</td>`});
+    html+='</tr>';
+  });
+  html+='</tbody></table>';
+  el.innerHTML=html;
+}
+
+// ===== EXPORT =====
+function getSheet(mode, idx){
+  if(mode==='main') return mainSheets[activeMainIdx];
+  if(mode==='note') return noteSheets[idx];
+  return null;
+}
+function sheetToTsv(s){
+  return [(s.headers||[]).join('\t'),...(s.rows||[]).map(r=>r.type==='section'?r.label:[r.label,...(r.values||[])].join('\t'))].join('\n');
+}
+function copyTbl(mode,idx){
+  const s=getSheet(mode,idx??0); if(!s) return;
+  navigator.clipboard.writeText(sheetToTsv(s)).then(()=>toast('✓ คัดลอกแล้ว — วางใน PowerPoint / Excel ได้เลย'));
+}
+function dlCSV(mode,idx){
+  const s=getSheet(mode,idx??0); if(!s) return;
+  const lines=[(s.headers||[]).map(h=>`"${h}"`).join(','),...(s.rows||[]).map(r=>r.type==='section'?`"${r.label}"`:[r.label,...(r.values||[])].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(','))];
+  const url=URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');a.href=url;a.download=(s.name||'data')+'.csv';a.click();URL.revokeObjectURL(url);
+  toast('⬇ ดาวน์โหลด CSV แล้ว');
+}
+function dlXLSX(mode,idx){
+  const wb=XLSX.utils.book_new();
+  const list=mode==='notes'?noteSheets:mode==='note'?[noteSheets[idx]]:mainSheets;
+  if(!list?.length){toast('ไม่มีข้อมูล');return}
+  list.forEach(s=>{
+    const data=[];
+    if(s.period||s.unit){data.push([s.name||'',(s.period||'')+(s.unit?' | หน่วย: '+s.unit:'')]);data.push([])}
+    data.push(s.headers||[]);
+    (s.rows||[]).forEach(r=>data.push(r.type==='section'?[r.label]:[r.label,...(r.values||[])]));
+    const ws=XLSX.utils.aoa_to_sheet(data);
+    ws['!cols']=[{wch:42},...(s.headers||[]).slice(1).map(()=>({wch:16}))];
+    XLSX.utils.book_append_sheet(wb,ws,(s.name||'Sheet').slice(0,31).replace(/[:\\\/\?\*\[\]]/g,'_'));
+  });
+  const fname=(file?.name?.replace('.pdf','')||'financial')+(mode==='notes'?'_หมายเหตุ':mode==='note'?'_'+list[0].name:'')+'.xlsx';
+  XLSX.writeFile(wb,fname);
+  toast('⬇ ดาวน์โหลด Excel แล้ว');
+}
+
+function toast(m){
+  const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
